@@ -2,9 +2,10 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
+import os
 
-# Path to the saved model and its components
-MODEL_PATH = 'D:\\Data Science\Machine Learning CodeBasics\\1.ML Project Credit Risk Modelling\\app\models\\model_data.joblib'
+# Path to the saved model — resolved relative to this file's location
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models', 'model_data.joblib')
 
 # Load the model and its components
 model_data = joblib.load(MODEL_PATH)
