@@ -2,6 +2,8 @@
 
 > An end-to-end machine learning system for quantifying borrower default risk, generating credit scores, and delivering real-time risk ratings through an interactive web application.
 
+**Live App:** [https://vox-credit-risk-modelling.streamlit.app/](https://vox-credit-risk-modelling.streamlit.app/)
+
 ---
 
 ## Table of Contents
@@ -22,8 +24,7 @@
 6. [Model Performance Summary](#model-performance-summary)
 7. [Web Application](#web-application)
 8. [Tech Stack](#tech-stack)
-9. [Installation & Setup](#installation--setup)
-10. [Running the Application](#running-the-application)
+9. [Inference Flow](#inference-flow)
 
 ---
 
@@ -423,46 +424,6 @@ After clicking **Calculate Risk**, three metric cards are rendered:
 | Model Serialisation | joblib |
 | Web Application | Streamlit |
 | Environment | Python venv |
-
----
-
-## Installation & Setup
-
-### 1. Clone / Open the project
-
-```
-cd "D:\Data Science\Machine Learning CodeBasics\1.ML Project Credit Risk Modelling"
-```
-
-### 2. Create a virtual environment
-
-```bash
-python -m venv .venv
-```
-
-### 3. Activate the environment
-
-```powershell
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-```
-
-### 4. Install dependencies
-
-```bash
-pip install streamlit pandas numpy scikit-learn joblib imbalanced-learn xgboost optuna statsmodels seaborn matplotlib
-```
-
----
-
-## Running the Application
-
-```powershell
-cd app
-& "..\\.venv\Scripts\streamlit.exe" run main.py
-```
-
-The application will open in your browser at `http://localhost:8501`.
 
 ---
 
