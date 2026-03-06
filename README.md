@@ -53,6 +53,26 @@ The model directly outputs three actionable signals:
 
 ---
 
+### Modelling Steps
+
+```mermaid
+flowchart LR
+    A["Dataset\n─────────────\nCustomers\nLoans\nBureau Data\n\nTarget: Default\n(Binary Variable)"]
+    B["Data Preprocessing\n─────────────────────\n- Loan purpose invalid values\n  replaced with mode\n- Feature selection via\n  IV, VIF & domain knowledge\n- Min-Max scaling for\n  numeric features"]
+    C["Train / Test Split\n──────────────────\n- 75% — Training\n- 25% — Test"]
+    D["Model Training\n─────────────────\n- Logistic Regression\n- XGBoost\n- Random Forest"]
+    E["Fine Tuning\n──────────────\n- RandomizedSearchCV\n- Optuna"]
+    F["Model Evaluation\n──────────────────\n- AUC, KS, Gini Coeff\n- Classification Report"]
+
+    A -->|merge & clean| B
+    B -->|stratified split| C
+    C -->|train models| D
+    D -->|hyperparameter search| E
+    E -->|assess performance| F
+```
+
+---
+
 ## Dataset Architecture
 
 The system uses **three raw CSV datasets**, each with **50,000 records**, merged on `cust_id`.
@@ -92,7 +112,7 @@ The system uses **three raw CSV datasets**, each with **50,000 records**, merged
 | `gst` | float | GST applied on processing fee |
 | `net_disbursement` | float | Amount received by the borrower |
 | `loan_tenure_months` | int | Loan repayment period in months |
-| `principal_outstanding` | float | Remaining principal balance |
+| `principal_outstanding` | float | POS (Principal Outstanding) / Book Size of Customer |
 | `bank_balance_at_application` | float | Applicant's bank balance at time of application |
 | `disbursal_date` | date | Date of loan disbursement |
 | `installment_start_dt` | date | Date repayments commenced |
@@ -114,14 +134,14 @@ The system uses **three raw CSV datasets**, each with **50,000 records**, merged
 
 | Column | Type | Description |
 |---|---|---|
-| `cust_id` | string | Foreign key to customers |
-| `number_of_open_accounts` | int | Active open loan accounts |
-| `number_of_closed_accounts` | int | Historical closed loan accounts |
-| `total_loan_months` | int | Total months across all loans |
-| `delinquent_months` | int | Months in which payments were missed |
+| `cust_id` | string | Customer ID |
+| `number_of_open_accounts` | int | Total number of open accounts till date |
+| `number_of_closed_accounts` | int | Total number of closed accounts till date |
+| `total_loan_months` | int | Total loan duration in months |
+| `delinquent_months` | int | Total months with missed payments |
 | `total_dpd` | int | Total Days Past Due across all loans |
-| `enquiry_count` | int | Number of credit enquiries |
-| `credit_utilization_ratio` | float | % of available credit currently used |
+| `enquiry_count` | int | Total credit enquiry count |
+| `credit_utilization_ratio` | float | Credit utilization ratio (% of available credit used) |
 
 **Shape:** 50,000 rows × 8 columns
 
@@ -244,13 +264,22 @@ IV quantifies how well each feature discriminates between defaulters and non-def
 | 0.1 – 0.3 | Medium |
 | > 0.3 | Strong |
 
-Features with `IV > 0.02` were retained. This threshold eliminated low-signal variables and produced a lean, interpretable feature set including:
+**Significant Variables (IV scores):**
 
-```
-age, loan_tenure_months, number_of_open_accounts, credit_utilization_ratio,
-loan_to_income, delinquency_ratio, avg_dpd_per_delinquency,
-residence_type, loan_purpose, loan_type
-```
+| Variable | IV | Inference |
+|---|---|---|
+| `credit_utilization_ratio` | 2.35 | Higher usage of available credit significantly increases default risk |
+| `delinquency_ratio` | 0.71 | Higher delinquency rates are strongly linked to increased default risk |
+| `loan_to_income` | 0.47 | Higher loan amounts relative to income increase the likelihood of default |
+| `avg_dpd_per_delinquency` | 0.40 | Higher days past due per delinquency correlates with higher default risk |
+| `loan_purpose` | 0.36 | Certain loan purposes are more likely to be associated with default |
+| `residence_type` | 0.24 | Residence type has a moderate impact on default risk |
+| `loan_tenure_months` | 0.21 | Longer loan tenures increase default risk |
+| `loan_type` | 0.16 | Different loan types have a minor influence on default risk |
+| `age` | 0.08 | Younger or older age has a minimal effect on default risk |
+| `number_of_open_accounts` | 0.08 | More open accounts can lead to default risk |
+
+Features with `IV > 0.02` were retained. This threshold eliminated low-signal variables and produced a lean, interpretable feature set.
 
 Categorical features were one-hot encoded with `drop_first=True` to avoid the dummy variable trap.
 
@@ -323,15 +352,22 @@ A high AUC indicates strong rank-ordering capability — the model effectively s
 
 #### KS Statistic (Kolmogorov-Smirnov)
 
-The KS statistic measures maximum separation between the cumulative distribution of defaulters and non-defaulters across deciles:
+The KS statistic measures maximum separation between the cumulative distribution of defaulters and non-defaulters across deciles. **Maximum KS of 85.988** is achieved at Decile 8 (highlighted), confirming excellent rank ordering:
 
-| Decile (High → Low Risk) | Cum Event Rate | Cum Non-event Rate | KS |
-|---|---|---|---|
-| 10 | Highest probability segment | Lowest | Maximum |
-| ... | ... | ... | ... |
-| 1 | Lowest probability segment | Highest | Near 0 |
+| Decile | Min Prob | Max Prob | Events | Non-events | Event Rate | Non-event Rate | Cum Events | Cum Non-events | Cum Event Rate | Cum Non-event Rate | KS |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 9 | 0.812 | 1.000 | 900 | 350 | 72.000 | 28.000 | 900 | 350 | 83.799 | 3.064 | 80.735 |
+| **8** | **0.198** | **0.812** | **159** | **1091** | **12.720** | **87.280** | **1059** | **1441** | **98.603** | **12.615** | **85.988** |
+| 7 | 0.026 | 0.198 | 10 | 1239 | 0.801 | 99.199 | 1069 | 2680 | 99.534 | 23.461 | 76.073 |
+| 6 | 0.004 | 0.026 | 5 | 1245 | 0.400 | 99.600 | 1074 | 3925 | 100.000 | 34.361 | 65.639 |
+| 5 | 0.001 | 0.004 | 0 | 1249 | 0.000 | 100.000 | 1074 | 5174 | 100.000 | 45.295 | 54.705 |
+| 4 | 0.000 | 0.001 | 0 | 1250 | 0.000 | 100.000 | 1074 | 6424 | 100.000 | 56.237 | 43.763 |
+| 3 | 0.000 | 0.000 | 0 | 1250 | 0.000 | 100.000 | 1074 | 7674 | 100.000 | 67.180 | 32.820 |
+| 2 | 0.000 | 0.000 | 0 | 1249 | 0.000 | 100.000 | 1074 | 8923 | 100.000 | 78.114 | 21.886 |
+| 1 | 0.000 | 0.000 | 0 | 1250 | 0.000 | 100.000 | 1074 | 10173 | 100.000 | 89.057 | 10.943 |
+| 0 | 0.000 | 0.000 | 0 | 1250 | 0.000 | 100.000 | 1074 | 11423 | 100.000 | 100.000 | 0.000 |
 
-A high KS value in the top 2–3 deciles confirms strong **rank ordering** — the model correctly concentrates defaults in the high-probability deciles.
+**Top 3 Decile Capture Rate: 99.53%** — nearly all defaults are captured by scoring the top 3 risk deciles.
 
 #### Feature Importance (Logistic Regression Coefficients)
 
@@ -371,13 +407,27 @@ This log-odds transformation ensures the score is **monotonically decreasing wit
 
 ## Model Performance Summary
 
+### Trials and Performance
+
+| Model | AUC | Gini |
+|---|---|---|
+| **Logistic Regression** *(selected)* | **98%** | **96%** |
+| XGBoost | 99% | 96% |
+| Random Forest | 97% | 95% |
+
+Logistic Regression was selected as the final production model for its **interpretability**, scorecard compatibility, and near-equivalent performance to XGBoost.
+
+### Final Model Metrics
+
 | Metric | Value |
 |---|---|
 | Algorithm | Logistic Regression |
 | Resampling | SMOTETomek |
 | Hyperparameter Tuning | Optuna (50 trials, 3-fold CV) |
-| AUC | ~0.98 |
-| Gini Coefficient | ~0.96 |
+| AUC | 98% |
+| Gini Coefficient | 96% |
+| Max KS Statistic | 85.988 (Decile 8) |
+| Top 3 Decile Capture Rate | 99.53% |
 | Score Range | 300 – 900 |
 | Training Set Size | 75% of 50,000 records |
 | Test Set Size | 25% of 50,000 records |
