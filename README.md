@@ -56,19 +56,24 @@ The model directly outputs three actionable signals:
 ### Modelling Steps
 
 ```mermaid
-flowchart LR
-    A["Dataset\n─────────────\nCustomers\nLoans\nBureau Data\n\nTarget: Default\n(Binary Variable)"]
-    B["Data Preprocessing\n─────────────────────\n- Loan purpose invalid values\n  replaced with mode\n- Feature selection via\n  IV, VIF & domain knowledge\n- Min-Max scaling for\n  numeric features"]
-    C["Train / Test Split\n──────────────────\n- 75% — Training\n- 25% — Test"]
-    D["Model Training\n─────────────────\n- Logistic Regression\n- XGBoost\n- Random Forest"]
-    E["Fine Tuning\n──────────────\n- RandomizedSearchCV\n- Optuna"]
-    F["Model Evaluation\n──────────────────\n- AUC, KS, Gini Coeff\n- Classification Report"]
+flowchart TD
+    subgraph phase1["Phase 1 — Data Preparation"]
+        direction LR
+        A["Dataset\n─────────────\nCustomers · Loans · Bureau Data\nTarget: Default (Binary Variable)"]
+        B["Data Preprocessing\n─────────────────────\n• Invalid loan purpose values replaced with mode\n• Feature selection via IV, VIF & domain knowledge\n• Min-Max scaling for numeric features"]
+        C["Train / Test Split\n──────────────────\n• 75% — Training\n• 25% — Test\n• Stratified split"]
+        A -->|merge & clean| B -->|stratified split| C
+    end
 
-    A -->|merge & clean| B
-    B -->|stratified split| C
-    C -->|train models| D
-    D -->|hyperparameter search| E
-    E -->|assess performance| F
+    subgraph phase2["Phase 2 — Model Development"]
+        direction LR
+        D["Model Training\n─────────────────\n• Logistic Regression\n• XGBoost\n• Random Forest"]
+        E["Fine Tuning\n──────────────\n• RandomizedSearchCV\n• Optuna (50 trials)"]
+        F["Model Evaluation\n──────────────────\n• AUC, KS, Gini Coefficient\n• Classification Report"]
+        D -->|hyperparameter search| E -->|assess performance| F
+    end
+
+    phase1 -->|train models| phase2
 ```
 
 ---
