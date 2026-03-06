@@ -59,17 +59,17 @@ The model directly outputs three actionable signals:
 flowchart TD
     subgraph phase1["Phase 1 — Data Preparation"]
         direction LR
-        A["Dataset\n─────────────\nCustomers · Loans · Bureau Data\nTarget: Default (Binary Variable)"]
-        B["Data Preprocessing\n─────────────────────\n• Invalid loan purpose values replaced with mode\n• Feature selection via IV, VIF & domain knowledge\n• Min-Max scaling for numeric features"]
-        C["Train / Test Split\n──────────────────\n• 75% — Training\n• 25% — Test\n• Stratified split"]
-        A -->|merge & clean| B -->|stratified split| C
+        A["Dataset\nCustomers / Loans / Bureau Data\nTarget: Default (Binary Variable)"]
+        B["Data Preprocessing\nInvalid loan purpose values replaced with mode\nFeature selection via IV, VIF and domain knowledge\nMin-Max scaling for numeric features"]
+        C["Train / Test Split\n75% Training  |  25% Test\nStratified split"]
+        A -->|merge and clean| B -->|stratified split| C
     end
 
     subgraph phase2["Phase 2 — Model Development"]
         direction LR
-        D["Model Training\n─────────────────\n• Logistic Regression\n• XGBoost\n• Random Forest"]
-        E["Fine Tuning\n──────────────\n• RandomizedSearchCV\n• Optuna (50 trials)"]
-        F["Model Evaluation\n──────────────────\n• AUC, KS, Gini Coefficient\n• Classification Report"]
+        D["Model Training\nLogistic Regression\nXGBoost\nRandom Forest"]
+        E["Fine Tuning\nRandomizedSearchCV\nOptuna (50 trials)"]
+        F["Model Evaluation\nAUC, KS, Gini Coefficient\nClassification Report"]
         D -->|hyperparameter search| E -->|assess performance| F
     end
 
