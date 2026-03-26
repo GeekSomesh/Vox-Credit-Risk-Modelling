@@ -1,4 +1,6 @@
 # Vox Finance — Credit Risk Modelling
+![Vox Finance Credit Risk Modelling](image.png)
+
 
 > An end-to-end machine learning system for quantifying borrower default risk, generating credit scores, and delivering real-time risk ratings through an interactive web application.
 
